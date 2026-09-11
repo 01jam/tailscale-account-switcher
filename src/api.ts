@@ -92,6 +92,35 @@ export type Retry =
   | { kind: "disconnect" }
   | { kind: "logIn" };
 
+/** A release newer than the running app, already narrowed to the one file this
+ *  machine can use. */
+export type UpdateAvailable = {
+  version: string;
+  notesUrl: string;
+  /** `null` when the release carries nothing in this install's format: there is
+   *  an update, but fetching it is a manual job. */
+  assetName: string | null;
+  assetUrl: string | null;
+  assetSize: number | null;
+  /** Whether this machine installs the package itself, or can only put the file
+   *  somewhere and step back — a `.dmg` or an AppImage. */
+  installs: boolean;
+};
+
+/** What pressing the button came to. A dismissed password dialog is not an
+ *  error: the user answered, and the answer was no. */
+export type InstallOutcome = {
+  kind: "installed" | "cancelled" | "downloaded" | "openedPage";
+  name: string | null;
+  version: string | null;
+};
+
+export type UpdateStatus = {
+  /** The version running right now, straight from the binary. */
+  current: string;
+  available: UpdateAvailable | null;
+};
+
 /** How loudly the window draws a notice. */
 export type NoticeLevel = "info" | "error";
 
@@ -158,4 +187,10 @@ export const api = {
   /** `null` hands the choice back to the system locale. */
   setLanguage: (tag: Lang | null) => invoke<void>("set_language", { tag }),
   pendingNotices: () => invoke<Notice[]>("pending_notices"),
+
+  updateStatus: () => invoke<UpdateStatus>("update_status"),
+  /** Downloads the package and, where the machine has a package manager for
+   *  it, installs it — the password prompt in the middle is polkit's own. */
+  installUpdate: () => invoke<InstallOutcome>("install_update"),
+  openReleaseNotes: () => invoke<void>("open_release_notes"),
 };

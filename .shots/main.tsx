@@ -66,6 +66,7 @@ function choose(label: RegExp) {
 
 setTimeout(() => {
   if (scene === "settings") press(/^(Impostazioni|Settings)$/);
+  if (scene === "update-settings") press(/^(Impostazioni|Settings) — /);
   if (scene === "menu") press(/^(Azioni per|Actions for) Alex/);
   if (["add-key", "add-other", "add-first", "add-open"].includes(scene)) {
     choose(/^(Altro server|Another server)/);

@@ -6,6 +6,7 @@ mod notice;
 mod store;
 mod tailscale;
 mod tray;
+mod update;
 
 use serde::Serialize;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -24,6 +25,14 @@ const POLL_SOCKET: Duration = Duration::from_secs(3);
 
 /// Over the CLI every read is a handful of processes; half the pace is plenty.
 const POLL_CLI: Duration = Duration::from_secs(6);
+
+/// How often the app looks for a release newer than itself.
+///
+/// Rare on purpose. A version check is not news that goes stale in minutes, the
+/// endpoint is somebody else's and answers unauthenticated requests sixty times
+/// an hour per address, and the first pass runs at launch — which for an app
+/// that lives in the tray across reboots is the one that matters.
+const UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(6 * 3600);
 
 /// While something is settling — an account coming up, a login waiting for its
 /// link to be used — so the window follows it closely.
@@ -166,6 +175,29 @@ pub fn spawn_action(app: &AppHandle, action: TrayAction) {
             ),
         }
     });
+}
+
+/// Look for a newer release, at launch and a few times a day after that.
+async fn poll_updates(app: AppHandle) {
+    loop {
+        match update::check().await {
+            Ok(found) => {
+                let latest = app.state::<update::Latest>();
+                // Only when it changes: the check outlives many windows, and
+                // re-announcing the same version every six hours would make the
+                // badge something to dismiss rather than something to read.
+                if latest.set(found.clone()) {
+                    if let Some(available) = found {
+                        let _ = app.emit("update-available", available);
+                    }
+                }
+            }
+            // Offline, rate-limited, no release yet, or the API changed shape.
+            // None of it is worth interrupting anyone over.
+            Err(e) => eprintln!("update check: {e:#}"),
+        }
+        tokio::time::sleep(UPDATE_CHECK_INTERVAL).await;
+    }
 }
 
 /// "Add account…" from the tray, for a window that was not listening yet.
@@ -356,6 +388,34 @@ fn set_language(app: AppHandle, tag: Option<String>) -> Result<(), Failure> {
     Ok(result?)
 }
 
+/// What the last check found, for a window that opened after it ran.
+#[tauri::command]
+fn update_status(latest: State<'_, update::Latest>) -> update::Status {
+    update::Status {
+        current: update::running_version().to_string(),
+        available: latest.get(),
+    }
+}
+
+/// Show what changed, in the browser.
+#[tauri::command]
+fn open_release_notes(latest: State<'_, update::Latest>) -> Result<(), Failure> {
+    let available = latest
+        .get()
+        .ok_or_else(|| Failure::message(i18n::t("errors.no_update")))?;
+    Ok(update::open_notes(&available)?)
+}
+
+/// Fetch the new package and install it. The password prompt in the middle of
+/// this is polkit's own; nothing of it passes through here.
+#[tauri::command]
+async fn install_update(latest: State<'_, update::Latest>) -> Result<update::Outcome, Failure> {
+    let available = latest
+        .get()
+        .ok_or_else(|| Failure::message(i18n::t("errors.no_update")))?;
+    Ok(update::fetch_and_install(&available).await?)
+}
+
 /// Whatever was raised while there was nowhere to show it.
 #[tauri::command]
 fn pending_notices(pending: State<'_, notice::Pending>) -> Vec<notice::Notice> {
@@ -474,6 +534,7 @@ pub fn run() {
         .manage(login::Jobs::default())
         .manage(notice::Pending::default())
         .manage(AddRequested::default())
+        .manage(update::Latest::default())
         .invoke_handler(tauri::generate_handler![
             get_state,
             switch_account,
@@ -496,6 +557,9 @@ pub fn run() {
             set_autostart,
             set_language,
             pending_notices,
+            update_status,
+            open_release_notes,
+            install_update,
         ])
         .setup(|app| {
             tray::build(app.handle())?;
@@ -513,6 +577,8 @@ pub fn run() {
 
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(watch(handle));
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(poll_updates(handle));
             Ok(())
         })
         .on_window_event(|window, event| match event {

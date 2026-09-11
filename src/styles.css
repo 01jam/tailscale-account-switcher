@@ -127,6 +127,21 @@ code,
   outline-offset: -2px;
 }
 
+/* The only thing in this bar that is news rather than chrome. Ink on the
+   window's own ground, with a ring of that ground around it so it reads as a
+   mark on the gear rather than as part of the icon. */
+.win-control-dot::after {
+  position: absolute;
+  top: 8px;
+  right: 11px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg);
+  content: "";
+}
+
 .win-control-close[data-hovered] {
   color: #fff;
   background: var(--danger);
@@ -1420,6 +1435,33 @@ code,
 .setting[data-disabled] {
   opacity: 0.5;
   cursor: default;
+}
+
+/* An offer, not a switch: a framed block at the top of the list, on the second
+   ground, and not pretending to be hoverable the way the rows under it are. */
+.setting-update,
+.setting-update + .setting {
+  border-radius: var(--radius-sm);
+}
+
+.setting-update {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  cursor: default;
+}
+
+.setting-update + .setting {
+  border-top: 0;
+}
+
+.setting-update-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .setting-select {

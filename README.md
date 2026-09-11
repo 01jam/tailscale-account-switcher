@@ -131,6 +131,39 @@ a key expiring hours into a session — goes to a desktop notification when the
 window is not in front, and is kept for the window when the desktop has nowhere
 to put it.
 
+### Finding a new version
+
+Every six hours, and once at launch, the app asks GitHub for the newest release
+of this repository — one unauthenticated request, no token and nothing sent but
+a user agent. When the tag is a version above the running one, a dot appears on
+the gear in the title bar and the update turns up at the top of Settings, with
+what is out, what is running, and a link to the release notes.
+
+Tags are compared as three numbers. Anything else — a `-beta.1`, a `nightly` —
+never counts as newer, because guessing where it sorts is how an app talks
+someone into a downgrade.
+
+**Installing** a `.deb` or `.rpm` runs the system package manager under
+`pkexec`: polkit puts up its own password dialog and takes the password itself,
+and this app never sees it. `apt-get install` rather than `dpkg -i`, so an
+upgrade that pulls in a new dependency is apt's problem to solve; for an `.rpm`
+it is `dnf`, `zypper` or `rpm`, whichever is installed. Dismissing the password
+dialog is reported as cancelled, not as a failure.
+
+What no package manager takes is still handed over: a `.dmg` is mounted and
+dragged; an AppImage is shown in its folder rather than opened. Either way the
+download lands in your Downloads folder, and its size is compared against what
+the release says before anything is run as root. A release with no package in
+this copy's format still gets announced, and the button opens the release page
+instead of guessing.
+
+Installing does not replace the copy already running — quit from the tray menu
+and start it again to be on the new one.
+
+Releases come from `.github/workflows/release.yml`: push a `v*` tag and it
+builds the Linux packages and a universal macOS `.dmg`, and attaches them with a
+`SHA256SUMS`.
+
 ## Requirements
 
 Node 20+ and npm, Tailscale installed and running.
@@ -189,7 +222,10 @@ python3 scripts/generate-icons.py      # regenerate the tray and app icons
 `npm run shots` serves the window at `http://localhost:1431/` against mocked
 Tauri APIs; `?scene=` picks a state (`window`, `limited`, `needs-login`,
 `stopped`, `unavailable`, `empty`, `add`, `waiting`, `settings`, `menu`) and
-`&theme=dark` the dark palette.
+`&theme=dark` the dark palette. The add dialog has `add`, `add-other`,
+`add-open` (the server dropdown open), `add-first` (no server used before),
+`add-key` and `reauth-key`; `update` and `update-settings` show an available
+release.
 
 `generate-icons.py` draws everything with no imaging library, from the Claude
 sibling's own geometry so the two apps sit at the same size in a panel and a

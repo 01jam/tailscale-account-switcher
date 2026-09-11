@@ -115,7 +115,23 @@ const login: LoginStatus =
       ? { running: true, withKey: true, progress: null }
       : { running: false, withKey: false, progress: null };
 
+const update =
+  (scene === "update" || scene === "update-settings")
+    ? {
+        current: "0.1.0",
+        available: {
+          version: "0.2.0",
+          notesUrl: "https://github.com/01jam/tailscale-account-switcher/releases/tag/v0.2.0",
+          assetName: "tailscale-account-switcher_0.2.0_amd64.deb",
+          assetUrl: "https://example.invalid/tailscale-account-switcher_0.2.0_amd64.deb",
+          assetSize: 2581408,
+          installs: true,
+        },
+      }
+    : { current: "0.1.0", available: null };
+
 const answers: Record<string, unknown> = {
+  update_status: update,
   get_state: snapshot(),
   get_settings: settings,
   pending_notices: [],

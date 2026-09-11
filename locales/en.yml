@@ -146,6 +146,22 @@ settings:
   language_auto: Automatic ({name})
   version: "Version {version}"
 
+update:
+  badge: A new version is available
+  title: Update
+  available: "Version {version} is available. You are on {current}."
+  notes: Release notes
+  install: Download and install
+  install_hint: The package is downloaded and installed with the system package manager. The password prompt in the middle is the system's own — this app never sees it.
+  handoff_hint: "The package is downloaded and shown to you: on this system putting it in place is a step you take yourself."
+  open_page: Open the release page
+  open_page_hint: This release carries no package in the format this copy was installed from, so the download is a manual one.
+  working: Downloading…
+  working_install: Downloading and installing…
+  done: "{name} downloaded — putting it in place is yours to do."
+  installed: "Version {version} installed. Quit from the tray menu and start it again to run it."
+  cancelled: Installation cancelled — nothing was changed.
+
 tray:
   status_running: "Connected · {name}"
   status_starting: Connecting…
@@ -180,3 +196,7 @@ errors:
   no_user: cannot tell the name of the local user
   autostart: "cannot set launch at login: {error}"
   no_opener: "cannot open the browser: {error}"
+  api_status: "the GitHub API answered {status}"
+  download_truncated: the download did not arrive whole — nothing was installed
+  install_failed: "the package manager exited with {status}"
+  no_update: no newer version to install

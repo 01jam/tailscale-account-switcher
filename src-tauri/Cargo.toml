@@ -20,8 +20,14 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
 dirs = "6"
-# The daemon is local: its API is a Unix socket and its CLI a child process, so
-# no HTTP client is needed — just async processes, sockets and timers.
+# The update check and the package download. rustls rather than native-tls: one
+# less system library to have installed. The daemon itself is never spoken to
+# over HTTP from here — its API is a Unix socket, handled in `localapi.rs`.
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "rustls-tls",
+    "http2",
+] }
 tokio = { version = "1", features = [
     "io-util",
     "macros",

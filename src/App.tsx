@@ -15,6 +15,8 @@ import {
   type Settings,
   type Snapshot,
   type ToggleKey,
+  type UpdateAvailable,
+  type UpdateStatus,
 } from "./api";
 import { reachable, title } from "./format";
 import { LangProvider, resolveLang, useT, type Lang, type Translate } from "./i18n";
@@ -73,6 +75,7 @@ function Switcher({ onLanguage }: { onLanguage: (lang: Lang) => void }) {
   // Read by the `login-finished` listener, which outlives any one render.
   const reauthing = useRef(false);
   const [servers, setServers] = useState<string[]>([]);
+  const [update, setUpdate] = useState<UpdateStatus | null>(null);
   // The change the daemon refused, to run again once access is granted.
   const [grant, setGrant] = useState<{ retry: (() => Promise<unknown>) | null } | null>(null);
 
@@ -166,8 +169,21 @@ function Switcher({ onLanguage }: { onLanguage: (lang: Lang) => void }) {
   useEffect(() => {
     reload();
     catchUp();
+    // The check runs on the Rust side from launch, so by the time a window
+    // opens the answer is usually already there. Merged rather than assigned:
+    // an event that beat this round-trip home must not be overwritten by the
+    // empty answer it raced.
+    api
+      .updateStatus()
+      .then((status) =>
+        setUpdate((prev) => (prev?.available ? { ...status, available: prev.available } : status)),
+      )
+      .catch(() => {});
 
     const unlisteners = [
+      listen<UpdateAvailable>("update-available", (e) => {
+        setUpdate((prev) => ({ current: prev?.current ?? "", available: e.payload }));
+      }),
       listen<Snapshot>("state-changed", (e) => setSnapshot(e.payload)),
       listen<Notice>("notice", (e) => say(e.payload.text, e.payload.level)),
       listen<LoginProgress>("login-progress", (e) => {
@@ -231,8 +247,10 @@ function Switcher({ onLanguage }: { onLanguage: (lang: Lang) => void }) {
     <main className="app">
       <div className="titlebar" {...drag}>
         <Button
-          className="win-control"
-          aria-label={t("app.settings")}
+          className={`win-control${update?.available ? " win-control-dot" : ""}`}
+          aria-label={
+            update?.available ? `${t("app.settings")} — ${t("update.badge")}` : t("app.settings")
+          }
           onPress={() => setShowSettings(true)}
         >
           <IconSettings size={16} />
@@ -393,6 +411,22 @@ function Switcher({ onLanguage }: { onLanguage: (lang: Lang) => void }) {
         settings={settings}
         busy={isBusy}
         onClose={() => setShowSettings(false)}
+        update={update}
+        onInstallUpdate={() =>
+          run({ kind: "other" }, async () => {
+            const outcome = await api.installUpdate();
+            // The browser opening on the release page is its own report; the
+            // rest earn a line, cancelling included — a button that answers
+            // silence reads as a broken one.
+            if (outcome.kind === "installed") {
+              say(t("update.installed", { version: outcome.version ?? "" }));
+            } else if (outcome.kind === "cancelled") {
+              say(t("update.cancelled"));
+            } else if (outcome.kind === "downloaded") {
+              say(t("update.done", { name: outcome.name ?? "" }));
+            }
+          })
+        }
         onChange={(key, value) => {
           // Optimistic: the toggle should not lag behind the pointer.
           setSettings((s) => (s ? { ...s, [key]: value } : s));

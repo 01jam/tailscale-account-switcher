@@ -14,8 +14,8 @@ import {
 } from "react-aria-components";
 import { IconChevronDown } from "@tabler/icons-react";
 
-import type { Settings, ToggleKey } from "../api";
-import { LANGS, LANG_NAMES, useT, type Lang } from "../i18n";
+import { api, type Settings, type ToggleKey, type UpdateStatus } from "../api";
+import { LANGS, LANG_NAMES, useT, type Lang, type Translate } from "../i18n";
 
 type Props = {
   isOpen: boolean;
@@ -25,6 +25,10 @@ type Props = {
   onChange: (key: ToggleKey, value: boolean) => void;
   /** `null` gives the choice back to the system locale. */
   onLanguageChange: (tag: Lang | null) => void;
+  /** `null` until the first check answers; `available` is what puts the dot on
+   *  the title bar's gear. */
+  update: UpdateStatus | null;
+  onInstallUpdate: () => void;
 };
 
 const TOGGLES: { key: ToggleKey; title: string; hint: string }[] = [
@@ -51,6 +55,8 @@ export default function SettingsDialog({
   onClose,
   onChange,
   onLanguageChange,
+  update,
+  onInstallUpdate,
 }: Props) {
   const t = useT();
   // Naming the language the automatic option resolves to is the difference
@@ -71,6 +77,12 @@ export default function SettingsDialog({
           <Heading slot="title">{t("settings.title")}</Heading>
 
           <div className="settings">
+            {/* First, when there is one: it is what the dot on the gear brought
+                the user here to find. */}
+            {update?.available && (
+              <UpdateSetting t={t} update={update} busy={busy} onInstall={onInstallUpdate} />
+            )}
+
             {TOGGLES.map((toggle) => (
               <Switch
                 key={toggle.key}
@@ -135,5 +147,63 @@ export default function SettingsDialog({
         </Dialog>
       </Modal>
     </ModalOverlay>
+  );
+}
+
+/** What is out, what is running, and the one button that does anything about
+ *  it. The button downloads and then steps aside: the system installer is what
+ *  actually writes to the machine, and it asks for the password itself. */
+function UpdateSetting({
+  t,
+  update,
+  busy,
+  onInstall,
+}: {
+  t: Translate;
+  update: UpdateStatus;
+  busy: boolean;
+  onInstall: () => void;
+}) {
+  const available = update.available;
+  if (!available) return null;
+
+  // No package in this install's format — an AppImage against a release that
+  // only shipped .deb, say. There is still an update, it is just a manual one,
+  // so the button changes its mind about what it does rather than lying.
+  const manual = !available.assetName;
+  const hint = manual
+    ? "update.open_page_hint"
+    : available.installs
+      ? "update.install_hint"
+      : "update.handoff_hint";
+
+  return (
+    <div className="setting setting-update">
+      <div>
+        <strong>{t("update.title")}</strong>
+        <p className="muted">
+          {t("update.available", { version: available.version, current: update.current })}
+        </p>
+        <p className="muted">{t(hint)}</p>
+      </div>
+      <div className="setting-update-actions">
+        <Button className="btn btn-primary btn-sm" isDisabled={busy} onPress={onInstall}>
+          {busy
+            ? t(available.installs ? "update.working_install" : "update.working")
+            : manual
+              ? t("update.open_page")
+              : t("update.install")}
+        </Button>
+        <Button
+          className="btn btn-sm"
+          isDisabled={busy}
+          onPress={() => {
+            api.openReleaseNotes().catch(() => {});
+          }}
+        >
+          {t("update.notes")}
+        </Button>
+      </div>
+    </div>
   );
 }
