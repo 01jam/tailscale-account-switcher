@@ -1,0 +1,1426 @@
+/* Black and white, after Tailscale's own palette: warm off-white grounds, a
+   near-black ink that doubles as the accent, greys for everything secondary.
+   Colour is reserved for the one thing that must not be missed — an error —
+   so state reads from weight and fill instead: a filled dot is connected, a
+   ring is not; the account in use carries the ink border. */
+
+:root {
+  --bg: #f7f6f5;
+  --surface: #ffffff;
+  --surface-2: #f1f0ee;
+  --border: #e4e2df;
+  --border-strong: #cdcac6;
+  --text: #1f1e1e;
+  --muted: #6f6c69;
+  --faint: #a29f9b;
+  --accent: #1f1e1e;
+  --accent-fg: #ffffff;
+  --accent-hover: #3b3938;
+  --danger: #b42318;
+  --danger-soft: #fcecea;
+  --radius: 10px;
+  --radius-sm: 7px;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 10px 28px rgb(0 0 0 / 0.1);
+  --font-sans: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Mono", Menlo, monospace;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --fast: 120ms;
+  --slow: 180ms;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121212;
+    --surface: #1b1a1a;
+    --surface-2: #252424;
+    --border: #312f2e;
+    --border-strong: #4a4745;
+    --text: #f3f2f0;
+    --muted: #a19e9a;
+    --faint: #6f6b68;
+    --accent: #f3f2f0;
+    --accent-fg: #121212;
+    --accent-hover: #d9d7d4;
+    --danger: #f1867c;
+    --danger-soft: #37201e;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 28px rgb(0 0 0 / 0.45);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-feature-settings: "cv11", "ss01";
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+code,
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  letter-spacing: -0.01em;
+}
+
+/* The window itself never scrolls: only the account list does, so the header
+   and the footer actions stay put. */
+.app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100vh;
+  padding: 16px 18px 18px;
+  overflow: hidden;
+}
+
+/* Window bar ------------------------------------------------------------- */
+
+/* The app carries no system decorations, so this is the only way to move the
+   window or put it away. Full-bleed against the shell's padding. */
+.titlebar {
+  display: flex;
+  flex: none;
+  align-items: stretch;
+  justify-content: flex-end;
+  height: 32px;
+  margin: -16px -18px -4px;
+}
+
+.win-controls {
+  display: flex;
+  flex: none;
+  align-items: stretch;
+  margin-left: 6px;
+}
+
+.win-control {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+
+.win-control[data-hovered] {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.win-control[data-focus-visible] {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.win-control-close[data-hovered] {
+  color: #fff;
+  background: var(--danger);
+}
+
+.resize-grip {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+}
+
+.resize-grip::after {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 9px;
+  height: 9px;
+  background: var(--border-strong);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  content: "";
+}
+
+.resize-grip:hover::after {
+  background: var(--muted);
+}
+
+/* Header ------------------------------------------------------------------ */
+
+.app-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.subtitle,
+.muted {
+  margin: 1px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.subtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Buttons ---------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  transition:
+    background var(--fast) var(--ease),
+    border-color var(--fast) var(--ease),
+    color var(--fast) var(--ease);
+}
+
+.btn[data-hovered] {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.btn[data-pressed] {
+  transform: translateY(0.5px);
+}
+
+.btn[data-focus-visible] {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn[data-disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.btn-primary[data-hovered] {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+
+.btn-danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-danger[data-hovered] {
+  border-color: var(--danger);
+  background: var(--danger);
+  filter: brightness(1.08);
+}
+
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+.btn-ghost[data-hovered] {
+  border-color: transparent;
+  background: var(--surface-2);
+}
+
+.btn-icon {
+  width: 32px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.btn-icon[data-hovered] {
+  border-color: transparent;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.btn-sm {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12.5px;
+}
+
+.btn-icon.btn-sm {
+  width: 28px;
+  padding: 0;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Connection strip -------------------------------------------------------- */
+
+/* This device, not an account: whether it is on the tailnet right now, and
+   the one control that changes that. Always present, so the state is read at a
+   glance rather than looked for. */
+.connection {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.connection-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.connection-title {
+  font-weight: 600;
+}
+
+.connection-meta {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connection-hint {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.connection-actions {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+
+/* More than a switch to offer: the actions take their own row, under the text
+   they answer rather than squeezing it into a column of words. */
+.connection-wrap {
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+
+.connection-wrap .connection-body {
+  flex-basis: calc(100% - 22px);
+}
+
+.connection-wrap .connection-actions {
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  padding-left: 22px;
+}
+
+/* State without colour: filled is on, a ring is off, a dashed ring is on its
+   way or waiting on someone. */
+.dot {
+  position: relative;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--text);
+  border-radius: 50%;
+}
+
+.dot-on {
+  background: var(--text);
+}
+
+.dot-off {
+  border-color: var(--faint);
+}
+
+.dot-wait {
+  border-style: dashed;
+  border-color: var(--muted);
+  animation: spin 2.4s linear infinite;
+}
+
+.dot-alert {
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot-wait,
+  .spin {
+    animation: none;
+  }
+}
+
+/* The on/off switch, shared by the connection strip and the settings. */
+.switch-indicator {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--border-strong);
+  transition: background var(--slow) var(--ease);
+}
+
+.switch-indicator::before {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+  content: "";
+  transition: transform var(--slow) var(--ease);
+}
+
+[data-selected] > .switch-indicator {
+  background: var(--accent);
+}
+
+[data-selected] > .switch-indicator::before {
+  transform: translateX(14px);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-selected] > .switch-indicator::before {
+    background: var(--accent-fg);
+  }
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  outline: none;
+}
+
+.switch[data-focus-visible] .switch-indicator {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.switch[data-disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch-indicator,
+  .switch-indicator::before {
+    transition: none;
+  }
+}
+
+/* Banners ---------------------------------------------------------------- */
+
+.banner {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.banner-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.banner-head > svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.banner strong {
+  font-weight: 600;
+}
+
+.banner p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A command to copy: monospace on the second ground, with its button inside
+   the same frame so the pair reads as one thing. */
+.command {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 3px 3px 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+/* On a row of its own: the whole command is the point, and cut short with an
+   ellipsis it is something to take on trust. */
+.command-row {
+  flex-basis: 100%;
+}
+
+.command code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+/* Toasts ------------------------------------------------------------------ */
+
+/* Over the list rather than in the flow: a strip that pushes the accounts down
+   whenever the app has something to report moves the cards out from under the
+   pointer. */
+.toasts {
+  position: absolute;
+  z-index: 8;
+  right: 18px;
+  bottom: 70px;
+  left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 10px 10px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent);
+  box-shadow: var(--shadow);
+  color: var(--accent-fg);
+  font-size: 12.5px;
+  pointer-events: auto;
+  animation: toast-in var(--slow) var(--ease);
+}
+
+.toast-error {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.toast-icon {
+  flex: none;
+  margin-top: 1px;
+}
+
+.toast-text {
+  flex: 1;
+  word-break: break-word;
+}
+
+.toast-close {
+  display: flex;
+  flex: none;
+  padding: 3px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  outline: none;
+}
+
+.toast-close[data-hovered] {
+  background: color-mix(in srgb, currentcolor 14%, transparent);
+  opacity: 1;
+}
+
+.toast-close[data-focus-visible] {
+  outline: 2px solid currentcolor;
+  outline-offset: 1px;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
+/* Account list ----------------------------------------------------------- */
+
+.section-label {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 4px 2px -4px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Holds the scrolling list plus the two fades that hide where it is clipped. */
+.list-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.list-wrap::before,
+.list-wrap::after {
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  left: 0;
+  content: "";
+  pointer-events: none;
+}
+
+.list-wrap::before {
+  top: 0;
+  height: 10px;
+  background: linear-gradient(to bottom, var(--bg), transparent);
+}
+
+.list-wrap::after {
+  bottom: 0;
+  height: 14px;
+  background: linear-gradient(to top, var(--bg), transparent);
+}
+
+.accounts {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 10px 1px 16px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  outline: none;
+}
+
+.accounts::-webkit-scrollbar {
+  display: none;
+}
+
+.account {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: default;
+  outline: none;
+  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+}
+
+.account[data-hovered] {
+  border-color: var(--border-strong);
+}
+
+.account[data-focus-visible] {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* The account in use carries the ink: a border twice as heavy, drawn inside so
+   the card does not shift by a pixel when it changes hands. */
+.account-active,
+.account-active[data-hovered] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 0.5px var(--accent);
+}
+
+.account[data-drop-target] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+.account[data-dragging] {
+  opacity: 0.4;
+}
+
+.account-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px 10px 4px;
+}
+
+.account-grip {
+  display: flex;
+  padding: 3px 1px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--faint);
+  cursor: grab;
+  outline: none;
+}
+
+.account-grip[data-hovered] {
+  color: var(--text);
+}
+
+.account-grip[data-focus-visible] {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Initials rather than the account's picture: nothing fetched from anyone's
+   CDN, and it stays in the palette. Filled for the account in use. */
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.account-active .avatar {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.account-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.account-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.account-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-meta {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pill-muted {
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--muted);
+}
+
+.account-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+/* What only the account in use can say: where this device sits on its
+   tailnet. A key-value grid, the values in monospace since they get copied. */
+.account-details {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-auto-rows: 26px;
+  align-items: center;
+  column-gap: 14px;
+  /* Under the name, not under the avatar: the details belong to the text
+     column, and the divider starting there says so. */
+  margin: 0 8px 8px 76px;
+  padding: 6px 0 0;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+}
+
+.detail-label {
+  color: var(--muted);
+}
+
+.detail-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+.btn.detail-copy {
+  width: 24px;
+  height: 24px;
+  opacity: 0.5;
+  transition: opacity var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.account-details > :hover + .detail-copy,
+.btn.detail-copy[data-hovered],
+.btn.detail-copy[data-focus-visible] {
+  opacity: 1;
+}
+
+.empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 28px 20px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--muted);
+  text-align: center;
+}
+
+.empty > svg {
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.empty strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.empty p {
+  max-width: 36ch;
+  margin: 0;
+}
+
+.empty .btn {
+  margin-top: 12px;
+}
+
+/* Footer, menu, dialogs --------------------------------------------------- */
+
+.app-footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.footer-note {
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.popover {
+  z-index: 20;
+  min-width: 200px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.popover[data-entering] {
+  animation: pop-in var(--fast) var(--ease);
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+.menu {
+  padding: 4px;
+  outline: none;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  outline: none;
+}
+
+.menu-item[data-focused] {
+  background: var(--surface-2);
+}
+
+.menu-item[data-disabled] {
+  color: var(--faint);
+  cursor: default;
+}
+
+.menu-item[data-selected] {
+  font-weight: 600;
+}
+
+.menu-item-danger {
+  color: var(--danger);
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+.tooltip {
+  z-index: 25;
+  max-width: 280px;
+  padding: 6px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.tooltip[data-entering] {
+  animation: fade var(--fast) var(--ease);
+}
+
+.overlay {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.36);
+}
+
+.overlay[data-entering] {
+  animation: fade var(--slow) var(--ease);
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay[data-entering],
+  .tooltip[data-entering],
+  .popover[data-entering] {
+    animation: none;
+  }
+}
+
+.modal {
+  display: flex;
+  width: 100%;
+  max-width: 400px;
+  /* Bounded by the window, or a tall dialog overflows both ways at once and
+     loses its heading above the top edge. */
+  max-height: 100%;
+}
+
+.dialog {
+  width: 100%;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  outline: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.dialog h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.dialog > p,
+.dialog-text {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.dialog-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.field > label,
+.field-label {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.field [slot="description"] {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.field [slot="errorMessage"] {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.input {
+  height: 36px;
+  padding: 0 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  user-select: text;
+  outline: none;
+  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+}
+
+.input::placeholder {
+  color: var(--faint);
+}
+
+.input[data-focused] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.input[data-invalid] {
+  border-color: var(--danger);
+}
+
+/* Server choice: cards rather than bare radios, each with its hint. */
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.choice[data-hovered] {
+  border-color: var(--border-strong);
+}
+
+.choice[data-selected] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 0.5px var(--accent);
+}
+
+.choice[data-focus-visible] {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.choice-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+.choice[data-selected] .choice-mark {
+  border-color: var(--accent);
+}
+
+.choice[data-selected] .choice-mark::after {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  content: "";
+}
+
+/* One line per server, the address pushed to the right: three stacked
+   two-line cards were most of the dialog's height before a field was filled. */
+.choice-body {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.choice-title {
+  flex: none;
+  font-weight: 550;
+}
+
+.choice-hint {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Two ways to authenticate, side by side: the chosen one is raised out of the
+   grey track rather than filled, so it reads as a choice and not as a button
+   waiting to be pressed. */
+.segmented {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 5px;
+  color: var(--muted);
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+
+.segment[data-hovered] {
+  color: var(--text);
+}
+
+.segment[data-selected] {
+  background: var(--surface);
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 1px 2px rgb(0 0 0 / 0.08);
+  color: var(--text);
+}
+
+.segment[data-focus-visible] {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* A field with a control inside its frame — the key, and the eye that shows
+   it. The frame takes the focus ring the input would have drawn. */
+.input-group {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding-right: 3px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+}
+
+.input-group:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.field[data-invalid] .input-group {
+  border-color: var(--danger);
+}
+
+.input-group .input,
+.input-group .input[data-focused] {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.note > svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* Waiting on the browser: one quiet block with the link and what to do with it. */
+.waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0 2px;
+  text-align: center;
+}
+
+.waiting strong {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.waiting p {
+  max-width: 34ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.waiting .command {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.error-text {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 12.5px;
+  word-break: break-word;
+  user-select: text;
+}
+
+/* Settings ---------------------------------------------------------------- */
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  margin: 8px -8px 0;
+}
+
+.setting {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  outline: none;
+}
+
+.setting + .setting {
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.setting p {
+  margin: 2px 0 0;
+  font-size: 12px;
+}
+
+.setting strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.setting .switch-indicator {
+  margin-top: 2px;
+}
+
+.setting[data-focus-visible] {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.setting[data-disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.setting-select {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  cursor: default;
+}
+
+.setting-select label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.setting-select p {
+  margin: 0;
+}
+
+.select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  height: 34px;
+  padding: 0 8px 0 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+.select-trigger[data-hovered] {
+  background: var(--surface-2);
+}
+
+.select-trigger[data-focus-visible] {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.popover-select {
+  width: var(--trigger-width);
+}
+
+.settings-foot {
+  margin: 14px 0 0;
+  color: var(--faint);
+  font-size: 12px;
+}

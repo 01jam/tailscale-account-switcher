@@ -1,0 +1,188 @@
+# Italian UI strings.
+#
+# One file per language, shared by both halves of the app: Vite compiles it into
+# the window's bundle, and the Rust side embeds it for the tray and the errors it
+# raises. Placeholders are `{name}` and are substituted the same way on both
+# sides, so a string can move between them without being rewritten.
+#
+# Adding a language: copy this file to `locales/<tag>.yml`, translate the values,
+# and register the tag in `src/i18n.ts` and `src-tauri/src/i18n.rs`.
+
+app:
+  name: Tailscale Account Switcher
+  title: Account Tailscale
+  refresh: Aggiorna
+  settings: Impostazioni
+  close: Chiudi
+  cancel: Annulla
+  save: Salva
+  dismiss: Chiudi
+  retry: Riprova
+  copy: Copia
+  copied: Copiato negli appunti.
+
+window:
+  minimize: Riduci a icona
+  close: Chiudi nella barra
+
+status:
+  loading: Lettura di Tailscale…
+  none: Nessun account attivo
+  unavailable: Tailscale non è raggiungibile
+
+connection:
+  running: Connesso
+  starting: Connessione in corso…
+  stopped: Disconnesso
+  needs_login: Login richiesto
+  needs_login_hint: La chiave di questo dispositivo è scaduta o l'account è stato disconnesso.
+  needs_machine_auth: In attesa di approvazione
+  needs_machine_auth_hint: Un amministratore della tailnet deve approvare questo dispositivo.
+  no_account: Nessun account attivo
+  no_account_hint: Scegli un account dalla lista o aggiungine uno.
+  device: "Questo dispositivo: {name}"
+  toggle: Connessione Tailscale
+  log_in: Accedi nel browser
+  use_key: Usa una chiave
+  open_login: Apri il link di login
+
+unavailable:
+  not_installed_title: Tailscale non è installato
+  not_installed_hint: Installa Tailscale su questo computer e torna qui.
+  download: Scarica Tailscale
+  daemon_down_title: Il servizio Tailscale non risponde
+  daemon_down_hint: "Avvia tailscaled (su Linux: sudo systemctl start tailscaled) e riprova."
+
+access:
+  title: Accesso limitato
+  body: "Tailscale non permette a {user} di gestire «{name}» senza privilegi di amministratore."
+  body_generic: "Tailscale non permette a {user} di gestire gli account senza privilegi di amministratore."
+  hint: Si concede una volta per account, poi switch e connessione non chiedono più la password.
+  grant: Concedi accesso
+  manual: "Esegui una volta in un terminale:"
+  prompt_title: Servono i permessi di amministratore
+  granted: Accesso concesso.
+  this_user: questo utente
+
+accounts:
+  list_label: Account su questo computer
+  empty_title: Nessun account su questo computer.
+  empty_hint: Aggiungi un account per collegare questo dispositivo a una tailnet.
+  reorder: Riordina {name}
+  actions_for: Azioni per {name}
+  in_use: In uso
+  switch_to: Passa
+  switch_to_label: Passa a {name}
+  switching: Cambio…
+  rename: Rinomina…
+  rename_title: Rinomina account
+  name_field: Nome
+  name_hint: Lascia vuoto per usare il nome dell'account.
+  copy_ip: Copia indirizzo IP
+  copy_dns: Copia nome MagicDNS
+  logout: Esci dall'account…
+  logout_title: Uscire da «{name}»?
+  logout_body: Il dispositivo si disconnette e la sua chiave viene invalidata sul server. Per tornare su questo account servirà un nuovo login.
+  logout_confirm: Esci
+  remove: Rimuovi da questo computer…
+  remove_title: Rimuovere «{name}»?
+  remove_body: L'account non comparirà più tra quelli disponibili su questo computer. L'account in sé non viene toccato, e lo puoi riaggiungere con un nuovo login.
+  remove_confirm: Rimuovi
+  ip: IP
+  dns: MagicDNS
+  exit_node: Exit node
+  key: Chiave
+  key_expires_days: "scade tra {days} giorni"
+  key_expires_hours: "scade tra {hours} ore"
+  key_expired: scaduta
+  switched: "Ora sei su «{name}»."
+  removed: "«{name}» rimosso da questo computer."
+  renamed: Nome aggiornato.
+  logged_out: Uscito dall'account.
+
+add:
+  button: Aggiungi account
+  title: Aggiungi un account
+  reauth_title: Accedi con una chiave
+  reauth_note: "L'account torna con le impostazioni di questo login: exit node e route accettate, se li usavi, vanno reimpostati."
+  server_label: Server di controllo
+  server_tailscale: Tailscale
+  server_tailscale_hint: login.tailscale.com
+  server_other: Altro server
+  server_other_hint: Headscale o un server self-hosted
+  server_url: URL del server
+  server_placeholder: https://headscale.example.com
+  method_label: Accesso
+  method_browser: Nel browser
+  method_key: Chiave pre-auth
+  method_browser_hint: "Si apre la pagina di login. Su Headscale quella pagina mostra un comando che un amministratore deve eseguire sul server."
+  key_label: Chiave di pre-autenticazione
+  key_placeholder: tskey-auth-… o chiave Headscale
+  key_description: "Da headscale preauthkeys create, o dalla sezione Keys della console di Tailscale. Non viene salvata."
+  key_missing: Incolla la chiave.
+  key_show: Mostra la chiave
+  key_hide: Nascondi la chiave
+  nickname: Nome (facoltativo)
+  nickname_placeholder: es. Lavoro
+  admin_note: Tailscale chiederà la password di amministratore.
+  start: Continua nel browser
+  start_key: Aggiungi account
+  start_reauth: Accedi
+  waiting: In attesa del login…
+  waiting_hint: Completa il login nella pagina che si è aperta. Se il browser non si è aperto, usa il link.
+  starting: Avvio del login…
+  key_starting: Accesso con la chiave…
+  approval: In attesa di approvazione
+  approval_hint: L'account è entrato; ora un amministratore della tailnet deve approvare questo dispositivo.
+  open_again: Apri di nuovo
+  copy_link: Copia link
+  done: Account aggiunto.
+  reauth_done: Accesso completato.
+  failed_title: Login non riuscito
+  cancelled: Login annullato.
+
+settings:
+  title: Impostazioni
+  autostart_title: Avvia all'accesso
+  autostart_hint: L'app parte da sola quando accedi, così l'icona è sempre nella barra.
+  start_hidden_title: Avvia nella barra
+  start_hidden_hint: "All'avvio non apre la finestra: resta solo l'icona in alto."
+  language_title: Lingua
+  language_hint: Cambia subito, senza riavviare l'app.
+  language_auto: Automatica ({name})
+  version: "Versione {version}"
+
+tray:
+  status_running: "Connesso · {name}"
+  status_starting: Connessione in corso…
+  status_stopped: Disconnesso
+  status_needs_login: Login richiesto
+  status_needs_machine_auth: In attesa di approvazione
+  status_no_account: Nessun account attivo
+  status_not_installed: Tailscale non è installato
+  status_daemon_down: Tailscale non risponde
+  no_accounts: Nessun account
+  connect: Connetti
+  disconnect: Disconnetti
+  log_in: Accedi…
+  add_account: Aggiungi account…
+  open_window: Apri finestra…
+  quit: Esci
+
+notices:
+  needs_login: "«{name}» richiede un nuovo login su questo dispositivo."
+  action_failed: "Tailscale ha rifiutato l'operazione: {error}"
+
+errors:
+  not_installed: tailscale non è installato su questo computer
+  timeout: Tailscale non ha risposto in tempo
+  no_pkexec: "pkexec non è disponibile: esegui il comando da un terminale con sudo"
+  cancelled: richiesta della password annullata
+  login_running: c'è già un login in corso
+  login_timeout: il link di login non è stato usato in tempo
+  invalid_server: "indirizzo del server non valido: serve un URL come https://headscale.example.com"
+  invalid_key: "chiave non valida: dev'essere una sola riga, senza spazi"
+  active_account: non puoi rimuovere l'account in uso; passa prima a un altro
+  no_user: non riesco a determinare il nome dell'utente locale
+  autostart: "non riesco a impostare l'avvio automatico: {error}"
+  no_opener: "non riesco ad aprire il browser: {error}"

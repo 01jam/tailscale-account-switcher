@@ -1,0 +1,180 @@
+# English UI strings. See `locales/it.yml` for how these files are used.
+
+app:
+  name: Tailscale Account Switcher
+  title: Tailscale accounts
+  refresh: Refresh
+  settings: Settings
+  close: Close
+  cancel: Cancel
+  save: Save
+  dismiss: Dismiss
+  retry: Try again
+  copy: Copy
+  copied: Copied to the clipboard.
+
+window:
+  minimize: Minimise
+  close: Close to the bar
+
+status:
+  loading: Reading Tailscale…
+  none: No active account
+  unavailable: Tailscale cannot be reached
+
+connection:
+  running: Connected
+  starting: Connecting…
+  stopped: Disconnected
+  needs_login: Login required
+  needs_login_hint: This device's key has expired, or the account was logged out.
+  needs_machine_auth: Waiting for approval
+  needs_machine_auth_hint: A tailnet admin has to approve this device.
+  no_account: No active account
+  no_account_hint: Pick an account from the list, or add one.
+  device: "This device: {name}"
+  toggle: Tailscale connection
+  log_in: Log in via browser
+  use_key: Use a key
+  open_login: Open the login link
+
+unavailable:
+  not_installed_title: Tailscale is not installed
+  not_installed_hint: Install Tailscale on this computer, then come back here.
+  download: Download Tailscale
+  daemon_down_title: The Tailscale service is not answering
+  daemon_down_hint: "Start tailscaled (on Linux: sudo systemctl start tailscaled) and try again."
+
+access:
+  title: Limited access
+  body: "Tailscale does not let {user} manage “{name}” without administrator rights."
+  body_generic: "Tailscale does not let {user} manage accounts without administrator rights."
+  hint: Granted once per account; after that, switching and connecting stop asking for a password.
+  grant: Grant access
+  manual: "Run this once in a terminal:"
+  prompt_title: Administrator rights needed
+  granted: Access granted.
+  this_user: this user
+
+accounts:
+  list_label: Accounts on this computer
+  empty_title: No accounts on this computer.
+  empty_hint: Add an account to connect this device to a tailnet.
+  reorder: Reorder {name}
+  actions_for: Actions for {name}
+  in_use: In use
+  switch_to: Switch
+  switch_to_label: Switch to {name}
+  switching: Switching…
+  rename: Rename…
+  rename_title: Rename account
+  name_field: Name
+  name_hint: Leave it empty to use the account's own name.
+  copy_ip: Copy IP address
+  copy_dns: Copy MagicDNS name
+  logout: Log out…
+  logout_title: Log out of “{name}”?
+  logout_body: This device disconnects and its key is invalidated on the server. Getting back on this account will take a new login.
+  logout_confirm: Log out
+  remove: Remove from this computer…
+  remove_title: Remove “{name}”?
+  remove_body: The account will no longer be offered on this computer. The account itself is not touched, and a new login adds it back.
+  remove_confirm: Remove
+  ip: IP
+  dns: MagicDNS
+  exit_node: Exit node
+  key: Key
+  key_expires_days: "expires in {days} days"
+  key_expires_hours: "expires in {hours} hours"
+  key_expired: expired
+  switched: "Now on “{name}”."
+  removed: "“{name}” removed from this computer."
+  renamed: Name updated.
+  logged_out: Logged out.
+
+add:
+  button: Add account
+  title: Add an account
+  reauth_title: Log in with a key
+  reauth_note: "The account comes back with this login's settings: an exit node or accepted routes, if you used them, need setting again."
+  server_label: Control server
+  server_tailscale: Tailscale
+  server_tailscale_hint: login.tailscale.com
+  server_other: Another server
+  server_other_hint: Headscale or a self-hosted server
+  server_url: Server URL
+  server_placeholder: https://headscale.example.com
+  method_label: Sign in
+  method_browser: In the browser
+  method_key: Pre-auth key
+  method_browser_hint: "Opens the login page. On Headscale that page shows a command an admin has to run on the server."
+  key_label: Pre-auth key
+  key_placeholder: tskey-auth-… or a Headscale key
+  key_description: "From headscale preauthkeys create, or the Keys page of the Tailscale admin console. It is not saved."
+  key_missing: Paste the key.
+  key_show: Show the key
+  key_hide: Hide the key
+  nickname: Name (optional)
+  nickname_placeholder: e.g. Work
+  admin_note: Tailscale will ask for the administrator password.
+  start: Continue in the browser
+  start_key: Add account
+  start_reauth: Log in
+  waiting: Waiting for the login…
+  waiting_hint: Finish logging in on the page that opened. If the browser did not open, use the link.
+  starting: Starting the login…
+  key_starting: Signing in with the key…
+  approval: Waiting for approval
+  approval_hint: The account is in; a tailnet admin now has to approve this device.
+  open_again: Open again
+  copy_link: Copy link
+  done: Account added.
+  reauth_done: Logged in.
+  failed_title: The login did not go through
+  cancelled: Login cancelled.
+
+settings:
+  title: Settings
+  autostart_title: Launch at login
+  autostart_hint: The app starts on its own when you sign in, so the icon is always in the bar.
+  start_hidden_title: Start in the bar
+  start_hidden_hint: "On launch it does not open the window: only the icon stays up top."
+  language_title: Language
+  language_hint: Applies straight away, no restart needed.
+  language_auto: Automatic ({name})
+  version: "Version {version}"
+
+tray:
+  status_running: "Connected · {name}"
+  status_starting: Connecting…
+  status_stopped: Disconnected
+  status_needs_login: Login required
+  status_needs_machine_auth: Waiting for approval
+  status_no_account: No active account
+  status_not_installed: Tailscale is not installed
+  status_daemon_down: Tailscale is not answering
+  no_accounts: No accounts
+  connect: Connect
+  disconnect: Disconnect
+  log_in: Log in…
+  add_account: Add account…
+  open_window: Open window…
+  quit: Quit
+
+notices:
+  needs_login: "“{name}” needs a new login on this device."
+  action_failed: "Tailscale refused: {error}"
+
+errors:
+  not_installed: tailscale is not installed on this computer
+  timeout: Tailscale did not answer in time
+  no_pkexec: "pkexec is not available: run the command from a terminal with sudo"
+  cancelled: password prompt dismissed
+  login_running: a login is already running
+  login_timeout: the login link was not used in time
+  invalid_server: "invalid server address: it takes a URL like https://headscale.example.com"
+  invalid_key: "invalid key: it has to be a single line with no spaces"
+  active_account: the account in use cannot be removed; switch to another one first
+  no_user: cannot tell the name of the local user
+  autostart: "cannot set launch at login: {error}"
+  no_opener: "cannot open the browser: {error}"
