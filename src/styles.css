@@ -1193,6 +1193,55 @@ code,
   white-space: nowrap;
 }
 
+/* Under "Another server": the dropdown of servers used before and, for a new
+   one, its URL. Set in to the radio's text column, so it reads as part of the
+   choice above rather than as a field of its own. */
+.nested {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 1px;
+  padding-left: 38px;
+}
+
+.select-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.select-value .option-hint {
+  display: none;
+}
+
+.option-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.option-hint {
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.menu-item-new {
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  color: var(--muted);
+}
+
+.menu-item-new[data-focused] {
+  color: var(--text);
+}
+
 /* Two ways to authenticate, side by side: the chosen one is raised out of the
    grey track rather than filled, so it reads as a choice and not as a button
    waiting to be pressed. */

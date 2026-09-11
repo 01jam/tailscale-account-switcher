@@ -6,14 +6,20 @@ import {
   Heading,
   Input,
   Label,
+  ListBox,
+  ListBoxItem,
   Modal,
   ModalOverlay,
+  Popover,
   Radio,
   RadioGroup,
+  Select,
+  SelectValue,
   Text,
   TextField,
 } from "react-aria-components";
 import {
+  IconChevronDown,
   IconCopy,
   IconExternalLink,
   IconEye,
@@ -21,6 +27,7 @@ import {
   IconKey,
   IconLoader2,
   IconLock,
+  IconPlus,
   IconUserCheck,
 } from "@tabler/icons-react";
 
@@ -40,8 +47,10 @@ export type AddMethod = "browser" | "key";
 /** What the form holds. Kept by the caller rather than the form, so that
  *  "Try again" after a failed login goes back to what was typed. */
 export type AddDraft = {
-  /** `TAILSCALE`, `OTHER`, or `server:<url>` for a server seen before. */
-  choice: string;
+  server: typeof TAILSCALE | typeof OTHER;
+  /** Under `OTHER`: a server used before, or `NEW_SERVER` to type one in. Empty
+   *  until chosen, and then the most recent server stands in. */
+  pick: string;
   url: string;
   nickname: string;
   method: AddMethod;
@@ -52,9 +61,13 @@ export type AddDraft = {
 
 export const TAILSCALE = "tailscale";
 export const OTHER = "other";
+/** The dropdown's own entry for a server not used before. Not a URL, so it
+ *  cannot collide with one. */
+export const NEW_SERVER = "new";
 
 export const EMPTY_DRAFT: AddDraft = {
-  choice: TAILSCALE,
+  server: TAILSCALE,
+  pick: "",
   url: "",
   nickname: "",
   method: "browser",
@@ -68,10 +81,9 @@ export const EMPTY_DRAFT: AddDraft = {
 export function reauthDraft(account: Account): AddDraft {
   return {
     ...EMPTY_DRAFT,
-    choice:
-      account.controlUrl && serverHost(account.controlUrl)
-        ? `server:${account.controlUrl}`
-        : TAILSCALE,
+    ...(account.controlUrl && serverHost(account.controlUrl)
+      ? { server: OTHER, pick: account.controlUrl }
+      : { server: TAILSCALE }),
     nickname: account.name !== account.loginName ? account.name : "",
     method: "key",
     reauth: true,
@@ -139,14 +151,19 @@ function Form({ draft, onDraft, servers, needsRoot, onStart, onClose }: Props) {
   const [revealed, setRevealed] = useState(false);
   const set = onDraft;
 
-  const other = draft.choice === OTHER;
+  const other = draft.server === OTHER;
+  // A preset's server gets its entry even before the list comes back with it.
+  const preset = draft.pick && draft.pick !== NEW_SERVER ? draft.pick : null;
+  const known = preset && !servers.includes(preset) ? [preset, ...servers] : servers;
+  const pick =
+    draft.pick === NEW_SERVER || known.includes(draft.pick)
+      ? draft.pick
+      : (known[0] ?? NEW_SERVER);
+  const typing = other && pick === NEW_SERVER;
+
   const withKey = draft.method === "key";
-  const urlMissing = other && draft.url.trim() === "";
+  const urlMissing = typing && draft.url.trim() === "";
   const keyMissing = withKey && draft.key.trim() === "";
-  // A server offered by a preset but not (yet) in the list still gets its row.
-  const presetServer = draft.choice.startsWith("server:") ? draft.choice.slice(7) : null;
-  const shown =
-    presetServer && !servers.includes(presetServer) ? [presetServer, ...servers] : servers;
 
   return (
     <form
@@ -154,8 +171,7 @@ function Form({ draft, onDraft, servers, needsRoot, onStart, onClose }: Props) {
         e.preventDefault();
         setTried(true);
         if (urlMissing || keyMissing) return;
-        const server =
-          draft.choice === TAILSCALE ? null : other ? draft.url.trim() : presetServer;
+        const server = !other ? null : typing ? draft.url.trim() : pick;
         onStart(server, draft.nickname.trim() || null, withKey ? draft.key.trim() : null);
       }}
     >
@@ -165,44 +181,83 @@ function Form({ draft, onDraft, servers, needsRoot, onStart, onClose }: Props) {
       {draft.reauth && <p className="dialog-text">{t("add.reauth_note")}</p>}
 
       <div className="dialog-stack">
-        <RadioGroup
-          className="field"
-          value={draft.choice}
-          onChange={(choice) => set({ choice })}
-        >
-          <Label className="field-label">{t("add.server_label")}</Label>
-          <div className="choices">
-            <Choice
-              value={TAILSCALE}
-              title={t("add.server_tailscale")}
-              hint={t("add.server_tailscale_hint")}
-            />
-            {shown.map((server) => (
-              <Choice
-                key={server}
-                value={`server:${server}`}
-                title={serverHost(server) ?? server}
-                hint={beyondHost(server)}
-              />
-            ))}
-            <Choice value={OTHER} title={t("add.server_other")} hint={t("add.server_other_hint")} />
-          </div>
-        </RadioGroup>
-
-        {other && (
-          <TextField
+        <div className="field">
+          <RadioGroup
             className="field"
-            autoFocus
-            value={draft.url}
-            onChange={(url) => set({ url })}
-            isInvalid={tried && urlMissing}
-            type="url"
+            value={draft.server}
+            onChange={(server) => set({ server: server as AddDraft["server"] })}
           >
-            <Label>{t("add.server_url")}</Label>
-            <Input className="input mono" placeholder={t("add.server_placeholder")} />
-            <FieldError>{t("errors.invalid_server")}</FieldError>
-          </TextField>
-        )}
+            <Label className="field-label">{t("add.server_label")}</Label>
+            <div className="choices">
+              <Choice
+                value={TAILSCALE}
+                title={t("add.server_tailscale")}
+                hint={t("add.server_tailscale_hint")}
+              />
+              <Choice value={OTHER} title={t("add.server_other")} hint={t("add.server_other_hint")} />
+            </div>
+          </RadioGroup>
+
+          {/* Outside the radio group, so arrow keys in the dropdown stay the
+              dropdown's. However many servers have been used, this is one row:
+              the list is inside it. */}
+          {other && (
+            <div className="nested">
+              {known.length > 0 && (
+                <Select
+                  aria-label={t("add.server_pick")}
+                  selectedKey={pick}
+                  onSelectionChange={(key) => set({ pick: String(key) })}
+                >
+                  <Button className="select-trigger">
+                    <SelectValue className="select-value" />
+                    <IconChevronDown size={16} />
+                  </Button>
+                  <Popover className="popover popover-select">
+                    <ListBox className="menu">
+                      {known.map((server) => (
+                        <ListBoxItem
+                          key={server}
+                          id={server}
+                          className="menu-item"
+                          textValue={serverHost(server) ?? server}
+                        >
+                          <span className="option-title">{serverHost(server) ?? server}</span>
+                          {beyondHost(server) && (
+                            <span className="option-hint">{beyondHost(server)}</span>
+                          )}
+                        </ListBoxItem>
+                      ))}
+                      <ListBoxItem
+                        id={NEW_SERVER}
+                        className="menu-item menu-item-new"
+                        textValue={t("add.server_new")}
+                      >
+                        <IconPlus size={15} />
+                        {t("add.server_new")}
+                      </ListBoxItem>
+                    </ListBox>
+                  </Popover>
+                </Select>
+              )}
+
+              {typing && (
+                <TextField
+                  className="field"
+                  autoFocus
+                  value={draft.url}
+                  onChange={(url) => set({ url })}
+                  isInvalid={tried && urlMissing}
+                  aria-label={t("add.server_url")}
+                  type="url"
+                >
+                  <Input className="input mono" placeholder={t("add.server_placeholder")} />
+                  <FieldError>{t("errors.invalid_server")}</FieldError>
+                </TextField>
+              )}
+            </div>
+          )}
+        </div>
 
         <RadioGroup
           className="field"
@@ -229,7 +284,7 @@ function Form({ draft, onDraft, servers, needsRoot, onStart, onClose }: Props) {
         {withKey && (
           <TextField
             className="field"
-            autoFocus={!other}
+            autoFocus={!typing}
             value={draft.key}
             onChange={(key) => set({ key })}
             isInvalid={tried && keyMissing}

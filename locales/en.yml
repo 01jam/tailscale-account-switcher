@@ -102,6 +102,8 @@ add:
   server_tailscale_hint: login.tailscale.com
   server_other: Another server
   server_other_hint: Headscale or a self-hosted server
+  server_pick: Choose the server
+  server_new: New server…
   server_url: Server URL
   server_placeholder: https://headscale.example.com
   method_label: Sign in

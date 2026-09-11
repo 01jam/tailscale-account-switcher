@@ -72,10 +72,12 @@ None of this applies where the daemon runs as your own user, or on macOS.
 
 ### Adding an account
 
-**Add account** asks what the CLI cannot guess: which control server
-(Tailscale's, one used before, or another URL such as a Headscale instance), how
-to authenticate, and an optional nickname. Then it runs `tailscale login`, one
-of two ways:
+**Add account** asks what the CLI cannot guess: which control server, how to
+authenticate, and an optional nickname. The server is Tailscale's own or
+**another server** — and under that, a dropdown holds every control server used
+before on this machine, plus **New server…** for typing a URL such as a
+Headscale instance. However many there are, the dialog stays the same height.
+Then it runs `tailscale login`, one of two ways:
 
 - **In the browser.** The login link the CLI prints is opened in the browser
   and kept in the dialog, with buttons to open it again or copy it. On Headscale

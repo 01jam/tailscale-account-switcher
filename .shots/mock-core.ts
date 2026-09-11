@@ -120,8 +120,11 @@ const answers: Record<string, unknown> = {
   get_settings: settings,
   pending_notices: [],
   login_status: login,
-  take_add_request: scene === "add" || scene === "add-key",
-  known_servers: ["https://headscale.example.net"],
+  take_add_request: scene.startsWith("add"),
+  known_servers:
+    scene === "add-first"
+      ? []
+      : ["https://headscale.example.net", "https://vpn.example.org", "http://10.0.0.2:8080"],
 };
 
 export function invoke<T>(cmd: string): Promise<T> {

@@ -67,13 +67,21 @@ function choose(label: RegExp) {
 setTimeout(() => {
   if (scene === "settings") press(/^(Impostazioni|Settings)$/);
   if (scene === "menu") press(/^(Azioni per|Actions for) Alex/);
-  if (scene === "add-key") {
+  if (["add-key", "add-other", "add-first", "add-open"].includes(scene)) {
     choose(/^(Altro server|Another server)/);
-    choose(/^(Chiave pre-auth|Pre-auth key)$/);
   }
+  if (scene === "add-open") {
+    setTimeout(() => {
+      const trigger = document.querySelector<HTMLElement>(".dialog .select-trigger");
+      trigger?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
+      trigger?.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, button: 0 }));
+      trigger?.click();
+    }, 150);
+  }
+  if (scene === "add-key") choose(/^(Chiave pre-auth|Pre-auth key)$/);
   if (scene === "reauth-key") press(/^(Usa una chiave|Use a key)$/);
   setTimeout(() => {
-    if (scene !== "menu") (document.activeElement as HTMLElement | null)?.blur();
+    if (scene !== "menu" && scene !== "add-open") (document.activeElement as HTMLElement | null)?.blur();
     document.body.dataset.ready = "1";
   }, 400);
 }, 500);
