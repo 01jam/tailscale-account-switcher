@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 """Render every icon the app ships, with no image library involved.
 
-Three families, all black and white:
+The same marks as Claude Account Switcher, drawn by the same geometry — this
+script is that one with the colours changed — so the two apps sit side by side
+in a panel or a dock at exactly the same size:
 
-* **Tray, Linux** (`tray.png`, `tray-off.png`) — Tabler's `arrows-exchange`.
-  Connected is the glyph in white on a black squircle: a single-colour glyph on
-  a transparent ground would vanish on whichever panel, light or dark, it was
-  not drawn for, and a white glyph on its own plate reads on both. Anything
-  else is the plate's outline and the glyph in grey — weaker than connected on
-  either panel, which is the whole message.
+* **Tray** (`tray.png`, `tray-off.png`) — Tabler's `arrows-exchange`, drawn
+  from its two SVG paths (`M7 10h14l-4 -4`, `M17 14h-14l4 4`) with stroke-width
+  2 and round caps, scaled to the stroked bounding box rather than the 24x24
+  viewBox. White with a thin dark outline: the sibling's terracotta reads on any
+  panel, and a plain black or white glyph would vanish on whichever panel, light
+  or dark, it was not drawn for. Connected is white; anything else grey.
 
 * **Tray, macOS** (`tray-template.png`, `tray-off-template.png`) — the bare
-  glyph as a *template*: the menu bar only looks at alpha and tints it itself,
-  so a plate would turn into a solid blob there.
+  glyph as a *template*: the menu bar only looks at alpha and tints it itself.
 
 * **App** (`32x32`, `128x128`, `128x128@2x`, `icon`, and `icon.icns` for the
-  macOS bundle) — a black squircle with the same glyph in white, tilted 15°,
-  on the macOS icon grid. The sibling Claude Account Switcher draws the very
-  same mark on terracotta; nothing is borrowed from Tailscale's own logo, so
-  these regenerate on any machine and carry no redistribution caveat.
+  macOS bundle) — a black squircle with the arrows in white, tilted 15°, on the
+  macOS icon grid: the sibling's icon with black where it has terracotta.
+  Nothing is borrowed from Tailscale's own logo, so these regenerate on any
+  machine and carry no redistribution caveat.
 
 Run: python3 scripts/generate-icons.py
 """
@@ -33,10 +34,7 @@ OUT = os.path.join(HERE, "..", "src-tauri", "icons")
 
 INK = (31, 30, 30)  # the near-black of the UI's --text
 PAPER = (255, 255, 255)
-OFF_GREY = (140, 138, 136)  # holds on light and dark panels alike
-# A hairline just inside the app plate's edge. Black on a dark dock is no edge
-# at all, and the icon would read as loose arrows.
-EDGE = (70, 68, 66)
+OFF = (156, 154, 152)  # the tray glyph while not connected
 
 # --- arrows-exchange geometry -------------------------------------------
 
@@ -93,25 +91,75 @@ def write_png(path, size, pixels):
     print(f"  {os.path.basename(path):24} {size:>4}px  {len(blob):>6} bytes")
 
 
-# --- shared renderer ----------------------------------------------------------
+# --- tray icons -----------------------------------------------------------
 
+TRAY_N = 128
+TRAY_MARGIN = 6  # the sibling's: the arrows span the canvas bar this much
+# The dark rim around the tray glyph, in viewBox units. It lives inside the
+# margin, so the arrows themselves stay exactly the sibling's size; at a 22px
+# panel icon it comes out under a pixel — enough to hold white on a light panel.
+OUTLINE = 0.8
+
+
+def render_tray(glyph, outline):
+    """The arrows in `glyph` colour, with an `outline` rim or none (templates)."""
+    scale = (TRAY_N - 2 * TRAY_MARGIN) / (GX1 - GX0)
+    off_x = TRAY_MARGIN
+    off_y = (TRAY_N - (GY1 - GY0) * scale) / 2
+    segs = [
+        (
+            ((a[0] - GX0) * scale + off_x, (a[1] - GY0) * scale + off_y),
+            ((b[0] - GX0) * scale + off_x, (b[1] - GY0) * scale + off_y),
+        )
+        for a, b in SEGMENTS
+    ]
+    radius = STROKE_R * scale
+    rim = (STROKE_R + OUTLINE) * scale
+
+    S = 4
+    total = S * S
+    pixels = []
+    for y in range(TRAY_N):
+        for x in range(TRAY_N):
+            inner = outer = 0
+            for sy in range(S):
+                for sx in range(S):
+                    p = (x + (sx + 0.5) / S, y + (sy + 0.5) / S)
+                    d = min(dist_to_segment(p, a, b) for a, b in segs)
+                    if d <= radius:
+                        inner += 1
+                    elif outline is not None and d <= rim:
+                        outer += 1
+            covered = inner + outer
+            if not covered:
+                pixels.append((0, 0, 0, 0))
+                continue
+            if outline is None:
+                pixels.append((*glyph[:3], round(255 * glyph[3] * inner / total)))
+                continue
+            rgb = mix(outline, glyph[:3], inner / covered)
+            # The rim is a touch translucent: enough to edge the glyph on a
+            # light panel, not enough to thicken it on a dark one.
+            alpha = (inner + outer * 0.85) / total
+            pixels.append((*rgb, round(255 * alpha)))
+    return pixels
+
+
+# --- app icon -------------------------------------------------------------
+
+GLYPH_ANGLE = math.radians(-15)  # screen coords: negative reads anticlockwise
+# Share of the *plate* the tilted glyph spans, measured on its rotated bounding
+# box — the sibling's number, so the two icons carry the same weight.
+GLYPH_SPAN = 0.62
+# macOS draws app icons on a 1024 canvas with the body 824 across: 100px of
+# clear space a side, so the app sits at the size of everything around it.
+PLATE_MARGIN = 100 / 1024
 PLATE_N = 4.5  # superellipse exponent: squircle, not a rounded rectangle
 
 
-def render(
-    size, *, plate_margin, glyph_span, angle, plate, glyph_alpha, samples, ring=None, edge=None
-):
-    """A glyph centred on an optional squircle plate.
-
-    `plate` is the plate colour, or None for a bare glyph (the template icons).
-    `ring` draws only the plate's outline, that thick as a share of the plate,
-    with plate and glyph both in the `plate` colour. `edge` is a hairline
-    colour just inside a filled plate's border. `glyph_span` is the share of the
-    plate — or of the canvas, with no plate — that the glyph's rotated bounding
-    box spans.
-    """
-    plate_side = size * (1 - 2 * plate_margin)
-    cos_a, sin_a = math.cos(angle), math.sin(angle)
+def render_app(size):
+    plate_side = size * (1 - 2 * PLATE_MARGIN)
+    cos_a, sin_a = math.cos(GLYPH_ANGLE), math.sin(GLYPH_ANGLE)
     cx, cy = (GX0 + GX1) / 2, (GY0 + GY1) / 2
 
     def place(p):
@@ -124,7 +172,7 @@ def render(
     xs = [p[0] for seg in unit for p in seg]
     ys = [p[1] for seg in unit for p in seg]
     span = max(max(xs) - min(xs), max(ys) - min(ys)) + 2 * STROKE_R
-    scale = (plate_side * glyph_span) / span
+    scale = (plate_side * GLYPH_SPAN) / span
     stroke_r = STROKE_R * scale
 
     dx = size / 2 - (min(xs) + max(xs)) / 2 * scale
@@ -137,112 +185,33 @@ def render(
     half = plate_side / 2
     pc = size / 2
 
-    def inside(p, h):
-        u, v = abs(p[0] - pc) / h, abs(p[1] - pc) / h
+    def on_plate(p):
+        u, v = abs(p[0] - pc) / half, abs(p[1] - pc) / half
         return u <= 1 and v <= 1 and u**PLATE_N + v**PLATE_N <= 1.0
 
-    def on_plate(p):
-        return inside(p, half)
-
-    inner = half - (ring or 0) * plate_side
-    edge_inner = half - max(1.0, plate_side * 0.012)
-
-    S = samples
+    S = 3
     total = S * S
     pixels = []
     for y in range(size):
         for x in range(size):
-            arrow = covered = rim = 0
+            arrow = plate = 0
             for sy in range(S):
                 for sx in range(S):
                     p = (x + (sx + 0.5) / S, y + (sy + 0.5) / S)
-                    hit = min(dist_to_segment(p, a, b) for a, b in segs) <= stroke_r
-                    if plate is None:
-                        if hit:
-                            arrow += 1
-                        continue
                     if not on_plate(p):
                         continue
-                    if ring is not None:
-                        if hit or not inside(p, inner):
-                            covered += 1
-                        continue
-                    covered += 1
-                    if hit:
+                    plate += 1
+                    if min(dist_to_segment(p, a, b) for a, b in segs) <= stroke_r:
                         arrow += 1
-                    elif edge is not None and not inside(p, edge_inner):
-                        rim += 1
 
-            if plate is None:
-                # Template: only alpha matters to the menu bar.
-                pixels.append((*INK, round(255 * glyph_alpha * arrow / total)))
-                continue
-            if not covered:
+            if not plate:
                 pixels.append((0, 0, 0, 0))
                 continue
-            if ring is not None:
-                pixels.append((*plate, round(255 * covered / total)))
-                continue
-            rgb = mix(plate, PAPER, glyph_alpha * arrow / covered)
-            if rim:
-                rgb = mix(rgb, edge, rim / covered)
-            pixels.append((*rgb, round(255 * covered / total)))
+
+            rgb = mix(INK, PAPER, arrow / total)
+            # The plate's own coverage sets alpha, keeping the squircle smooth.
+            pixels.append((*rgb, round(255 * plate / total)))
     return pixels
-
-
-# --- tray icons -----------------------------------------------------------
-
-TRAY_N = 128
-
-
-def tray(plate, ring=None):
-    # Nearly edge to edge: a panel icon is 16-24px, and every pixel of margin
-    # at that size is a pixel of glyph lost. Upright, unlike the app icon —
-    # tilted strokes that thin go soft.
-    return render(
-        TRAY_N,
-        plate_margin=4 / TRAY_N,
-        glyph_span=0.72,
-        angle=0.0,
-        plate=plate,
-        glyph_alpha=1.0,
-        samples=4,
-        ring=ring,
-    )
-
-
-def tray_template(glyph_alpha):
-    return render(
-        TRAY_N,
-        plate_margin=0.0,
-        glyph_span=0.94,
-        angle=0.0,
-        plate=None,
-        glyph_alpha=glyph_alpha,
-        samples=4,
-    )
-
-
-# --- app icon -------------------------------------------------------------
-
-# macOS draws app icons on a 1024 canvas with the body 824 across: 100px of
-# clear space a side, so the app sits at the size of everything around it.
-APP_MARGIN = 100 / 1024
-APP_GLYPH_SPAN = 0.62
-APP_ANGLE = math.radians(-15)  # screen coords: negative reads anticlockwise
-
-
-def app(size):
-    return render(
-        size,
-        plate_margin=APP_MARGIN,
-        glyph_span=APP_GLYPH_SPAN,
-        angle=APP_ANGLE,
-        plate=INK,
-        glyph_alpha=1.0,
-        samples=3,
-        edge=EDGE,
-    )
 
 
 # --- macOS bundle icon ---------------------------------------------------
@@ -279,10 +248,12 @@ def main():
     os.makedirs(OUT, exist_ok=True)
 
     print("tray:")
-    write_png(os.path.join(OUT, "tray.png"), TRAY_N, tray(INK))
-    write_png(os.path.join(OUT, "tray-off.png"), TRAY_N, tray(OFF_GREY, ring=0.075))
-    write_png(os.path.join(OUT, "tray-template.png"), TRAY_N, tray_template(1.0))
-    write_png(os.path.join(OUT, "tray-off-template.png"), TRAY_N, tray_template(0.45))
+    write_png(os.path.join(OUT, "tray.png"), TRAY_N, render_tray((*PAPER, 1.0), INK))
+    write_png(os.path.join(OUT, "tray-off.png"), TRAY_N, render_tray((*OFF, 1.0), INK))
+    write_png(os.path.join(OUT, "tray-template.png"), TRAY_N, render_tray((*INK, 1.0), None))
+    write_png(
+        os.path.join(OUT, "tray-off-template.png"), TRAY_N, render_tray((*INK, 0.45), None)
+    )
 
     print("app:")
     for name, size in [
@@ -291,7 +262,7 @@ def main():
         ("128x128@2x.png", 256),
         ("icon.png", 512),
     ]:
-        write_png(os.path.join(OUT, name), size, app(size))
+        write_png(os.path.join(OUT, name), size, render_app(size))
 
     print("macOS bundle:")
     write_icns(os.path.join(OUT, "icon.icns"))

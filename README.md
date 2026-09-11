@@ -189,9 +189,12 @@ Tauri APIs; `?scene=` picks a state (`window`, `limited`, `needs-login`,
 `stopped`, `unavailable`, `empty`, `add`, `waiting`, `settings`, `menu`) and
 `&theme=dark` the dark palette.
 
-`generate-icons.py` draws everything with no imaging library: Tabler's
-`arrows-exchange` in white on a black squircle, the sibling's mark on
-Tailscale's ink. Nothing is borrowed from Tailscale's own logo.
+`generate-icons.py` draws everything with no imaging library, from the Claude
+sibling's own geometry so the two apps sit at the same size in a panel and a
+dock: the app icon is that one with black where it has terracotta, and the tray
+glyph is the same arrows in white with a thin dark rim, which keeps them
+readable on a light panel as well as a dark one. Nothing is borrowed from
+Tailscale's own logo.
 
 ## Caveats
 
