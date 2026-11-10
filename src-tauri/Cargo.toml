@@ -1,6 +1,6 @@
 [package]
 name = "tailscale-switch"
-version = "0.1.1"
+version = "0.1.2"
 description = "Switch between the Tailscale accounts on this computer"
 authors = ["Hund Studio"]
 edition = "2021"
