@@ -2,7 +2,12 @@
    near-black ink that doubles as the accent, greys for everything secondary.
    Colour is reserved for the one thing that must not be missed — an error —
    so state reads from weight and fill instead: a filled dot is connected, a
-   ring is not; the account in use carries the ink border. */
+   ring is not; the account in use carries the ink border.
+
+   The structure — type scale, control sizes, radii, motion — is shared with
+   Claude Account Switcher; only the colours differ, so the two read as one
+   family in a panel. Keep the two stylesheets in step: a rule changed here
+   wants the same change there. */
 
 :root {
   --bg: #f7f6f5;
@@ -1459,8 +1464,12 @@ code,
   border-top: 0;
 }
 
+/* Stacked, each the card's full width: the primary action first, the notes
+   under it, and neither depends on the other's label length. */
 .setting-update-actions {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
 }
 
