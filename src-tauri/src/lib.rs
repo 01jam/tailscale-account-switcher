@@ -177,21 +177,23 @@ pub fn spawn_action(app: &AppHandle, action: TrayAction) {
     });
 }
 
+/// Keep what a check found, and announce it if it is news. Only when it
+/// changes: the check outlives many windows, and re-announcing the same version
+/// every six hours would make the badge something to dismiss rather than
+/// something to read.
+fn record_update(app: &AppHandle, found: Option<update::Available>) {
+    if app.state::<update::Latest>().set(found.clone()) {
+        if let Some(available) = found {
+            let _ = app.emit("update-available", available);
+        }
+    }
+}
+
 /// Look for a newer release, at launch and a few times a day after that.
 async fn poll_updates(app: AppHandle) {
     loop {
         match update::check().await {
-            Ok(found) => {
-                let latest = app.state::<update::Latest>();
-                // Only when it changes: the check outlives many windows, and
-                // re-announcing the same version every six hours would make the
-                // badge something to dismiss rather than something to read.
-                if latest.set(found.clone()) {
-                    if let Some(available) = found {
-                        let _ = app.emit("update-available", available);
-                    }
-                }
-            }
+            Ok(found) => record_update(&app, found),
             // Offline, rate-limited, no release yet, or the API changed shape.
             // None of it is worth interrupting anyone over.
             Err(e) => eprintln!("update check: {e:#}"),
@@ -341,7 +343,6 @@ struct Settings {
     system_language: String,
     /// The language actually in use, override or not.
     resolved_language: String,
-    version: String,
 }
 
 #[tauri::command]
@@ -353,7 +354,6 @@ fn get_settings(app: AppHandle) -> Result<Settings, Failure> {
         language: store::language()?,
         system_language: i18n::Lang::from_tag(&i18n::system_tag()).tag().to_string(),
         resolved_language: i18n::lang().tag().to_string(),
-        version: app.package_info().version.to_string(),
     })
 }
 
@@ -395,6 +395,19 @@ fn update_status(latest: State<'_, update::Latest>) -> update::Status {
         current: update::running_version().to_string(),
         available: latest.get(),
     }
+}
+
+/// Look now rather than at the next turn of the clock: the button in Settings.
+/// Unlike the background check, a failure here is reported — someone pressed
+/// a button and is waiting for an answer.
+#[tauri::command]
+async fn check_update(app: AppHandle) -> Result<update::Status, Failure> {
+    let found = update::check().await?;
+    record_update(&app, found.clone());
+    Ok(update::Status {
+        current: update::running_version().to_string(),
+        available: found,
+    })
 }
 
 /// Show what changed, in the browser.
@@ -558,6 +571,7 @@ pub fn run() {
             set_language,
             pending_notices,
             update_status,
+            check_update,
             open_release_notes,
             install_update,
         ])

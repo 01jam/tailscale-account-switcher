@@ -138,7 +138,6 @@ export type Settings = {
   language: Lang | null;
   systemLanguage: Lang;
   resolvedLanguage: Lang;
-  version: string;
 };
 
 /** The settings that are plain on/off switches. */
@@ -189,6 +188,8 @@ export const api = {
   pendingNotices: () => invoke<Notice[]>("pending_notices"),
 
   updateStatus: () => invoke<UpdateStatus>("update_status"),
+  /** Asks GitHub now instead of waiting for the next scheduled check. */
+  checkUpdate: () => invoke<UpdateStatus>("check_update"),
   /** Downloads the package and, where the machine has a package manager for
    *  it, installs it — the password prompt in the middle is polkit's own. */
   installUpdate: () => invoke<InstallOutcome>("install_update"),

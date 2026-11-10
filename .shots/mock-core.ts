@@ -101,7 +101,6 @@ const settings: Settings = {
   language: null,
   systemLanguage: "it",
   resolvedLanguage: (new URLSearchParams(location.search).get("lang") as "it" | "en") ?? "it",
-  version: "0.1.0",
 };
 
 const login: LoginStatus =
@@ -132,6 +131,7 @@ const update =
 
 const answers: Record<string, unknown> = {
   update_status: update,
+  check_update: update,
   get_state: snapshot(),
   get_settings: settings,
   pending_notices: [],
